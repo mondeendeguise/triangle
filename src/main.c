@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 
 char *slurp_file(const char *file_path)
@@ -80,6 +81,37 @@ typedef enum {
     VA_COUNT,
 } Vertex_Attrib;
 
+bool compile_shader_source(const GLchar *source, GLenum shader_type, GLuint *shader)
+{
+    *shader = glCreateShader(shader_type);
+    glShaderSource(*shader, 1, &source, NULL);
+
+    int compiled;
+    glCompileShader(*shader);
+    glGetShaderiv(*shader, GL_COMPILE_STATUS, &compiled);
+
+    if(!compiled) {
+        GLsizei message_size;
+        glGetShaderiv(*shader, GL_INFO_LOG_LENGTH, &message_size);
+        GLchar message[message_size];
+
+        glGetShaderInfoLog(*shader, message_size, &message_size, message);
+
+        fprintf(stderr, "ERROR: failed to compile shader: %.*s\n", message_size, message);
+        return false;
+    }
+
+    return true;
+}
+
+bool compile_shader_file(const char *file_path, GLenum shader_type, GLuint *shader)
+{
+    char *source = slurp_file(file_path);
+    bool ok = compile_shader_source(source, shader_type, shader);
+    free(source);
+    return ok;
+}
+
 int main(void)
 {
     glfwInit();
@@ -96,17 +128,9 @@ int main(void)
     glewInit();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    char *vertex_shader_source = slurp_file(vertex_shader_path);
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, (const char * const *) &vertex_shader_source, NULL);
-    glCompileShader(vertex_shader);
-    free(vertex_shader_source);
-
-    char *fragment_shader_source = slurp_file(fragment_shader_path);
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, (const char * const *) &fragment_shader_source, NULL);
-    glCompileShader(fragment_shader);
-    free(fragment_shader_source);
+    GLuint vertex_shader, fragment_shader;
+    compile_shader_file(vertex_shader_path, GL_VERTEX_SHADER, &vertex_shader);
+    compile_shader_file(fragment_shader_path, GL_FRAGMENT_SHADER, &fragment_shader);
 
     GLuint shader_program = glCreateProgram();
     glAttachShader(shader_program, vertex_shader);
@@ -119,9 +143,9 @@ int main(void)
     size_t vertex_count = 3;
     Vertex *vertices = malloc(vertex_count * sizeof(Vertex));
     
-    vertices[0] = (Vertex) { v3f(-0.5f, -0.5f,  0.0f), v4f(1.0, 0.0, 0.0, 1.0) };
+    vertices[0] = (Vertex) { v3f( 0.5f,  0.5f,  0.0f), v4f(1.0, 0.0, 0.0, 1.0) };
     vertices[1] = (Vertex) { v3f( 0.5f, -0.5f,  0.0f), v4f(0.0, 1.0, 0.0, 1.0) };
-    vertices[2] = (Vertex) { v3f( 0.0f,  0.5f,  0.0f), v4f(0.0, 0.0, 1.0, 1.0) };
+    vertices[2] = (Vertex) { v3f(-0.5f,  0.5f,  0.0f), v4f(0.0, 0.0, 1.0, 1.0) };
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -140,11 +164,22 @@ int main(void)
 
     glUseProgram(shader_program);
 
+    glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
+
+    vertex_count = 6;
+    vertices = realloc(vertices, vertex_count * sizeof(Vertex));
+
+    vertices[3] = (Vertex) { v3f( 0.5f, -0.5f,  0.0f), v4f(1.0f, 0.0f, 0.0f, 1.0f) };
+    vertices[4] = (Vertex) { v3f(-0.5f, -0.5f,  0.0f), v4f(0.0f, 1.0f, 0.0f, 1.0f) };
+    vertices[5] = (Vertex) { v3f(-0.5f,  0.5f,  0.0f), v4f(0.0f, 0.0f, 1.0f, 1.0f) };
+
+    glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
+
     while(!glfwWindowShouldClose(window)) {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
