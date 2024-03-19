@@ -85,9 +85,9 @@ bool compile_shader_source(const GLchar *source, GLenum shader_type, GLuint *sha
 {
     *shader = glCreateShader(shader_type);
     glShaderSource(*shader, 1, &source, NULL);
+    glCompileShader(*shader);
 
     int compiled;
-    glCompileShader(*shader);
     glGetShaderiv(*shader, GL_COMPILE_STATUS, &compiled);
 
     if(!compiled) {
@@ -112,6 +112,39 @@ bool compile_shader_file(const char *file_path, GLenum shader_type, GLuint *shad
     return ok;
 }
 
+bool link_shader_program(const char *vertex_shader_path,
+                         const char *fragment_shader_path,
+                         GLuint *program)
+{
+    bool ok = true;
+    GLuint vertex_shader, fragment_shader;
+    ok = ok && compile_shader_file(vertex_shader_path, GL_VERTEX_SHADER, &vertex_shader);
+    ok = ok && compile_shader_file(fragment_shader_path, GL_FRAGMENT_SHADER, &fragment_shader);
+
+    *program = glCreateProgram();
+    glAttachShader(*program, vertex_shader);
+    glAttachShader(*program, fragment_shader);
+    glLinkProgram(*program);
+
+    int linked;
+    glGetProgramiv(*program, GL_LINK_STATUS, &linked);
+    if(!linked) {
+        GLsizei message_size;
+        glGetProgramiv(*program, GL_INFO_LOG_LENGTH, &message_size);
+        GLchar message[message_size];
+
+        glGetProgramInfoLog(*program, message_size, &message_size, message);
+
+        fprintf(stderr, "ERROR: failed to link shader program: %.*s\n", message_size, message);
+    }
+    ok = ok && linked;
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    return ok;
+}
+
 int main(void)
 {
     glfwInit();
@@ -128,17 +161,8 @@ int main(void)
     glewInit();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    GLuint vertex_shader, fragment_shader;
-    compile_shader_file(vertex_shader_path, GL_VERTEX_SHADER, &vertex_shader);
-    compile_shader_file(fragment_shader_path, GL_FRAGMENT_SHADER, &fragment_shader);
-
-    GLuint shader_program = glCreateProgram();
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-    glLinkProgram(shader_program);
-
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
+    GLuint shader_program;
+    link_shader_program(vertex_shader_path, fragment_shader_path, &shader_program);
 
     size_t vertex_count = 3;
     Vertex *vertices = malloc(vertex_count * sizeof(Vertex));
