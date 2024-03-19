@@ -56,6 +56,30 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
+typedef struct { float x, y, z; } V3f;
+typedef struct { float x, y, z, w; } V4f;
+
+V3f v3f(float x, float y, float z)
+{
+    return (V3f){x, y, z};
+}
+
+V4f v4f(float x, float y, float z, float w)
+{
+    return (V4f){x, y, z, w};
+}
+
+typedef struct {
+    V3f pos;
+    V4f color;
+} Vertex;
+
+typedef enum {
+    VA_POS = 0,
+    VA_COLOR,
+    VA_COUNT,
+} Vertex_Attrib;
+
 int main(void)
 {
     glfwInit();
@@ -92,23 +116,27 @@ int main(void)
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
-    float vertices[] = {
-        -0.5f, -0.5f,  0.0f,
-         0.5f, -0.5f,  0.0f,
-         0.0f,  0.5f,  0.0f,
-    };
+    size_t vertex_count = 3;
+    Vertex *vertices = malloc(vertex_count * sizeof(Vertex));
+    
+    vertices[0] = (Vertex) { v3f(-0.5f, -0.5f,  0.0f), v4f(1.0, 0.0, 0.0, 1.0) };
+    vertices[1] = (Vertex) { v3f( 0.5f, -0.5f,  0.0f), v4f(0.0, 1.0, 0.0, 1.0) };
+    vertices[2] = (Vertex) { v3f( 0.0f,  0.5f,  0.0f), v4f(0.0, 0.0, 1.0, 1.0) };
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
 
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *) 0);
-    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(VA_POS, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, pos));
+    glEnableVertexAttribArray(VA_POS);
+
+    glVertexAttribPointer(VA_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, color));
+    glEnableVertexAttribArray(VA_COLOR);
 
     glUseProgram(shader_program);
 
