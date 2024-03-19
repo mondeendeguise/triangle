@@ -151,5 +151,6 @@ int main(void)
     }
 
     glfwTerminate();
+    if(vertices) free(vertices);
     return 0;
 }
