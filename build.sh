@@ -5,4 +5,4 @@ LIBS="`pkg-config --libs glew glfw3`"
 
 set -xe
 
-cc $CFLAGS -o triangle src/main.c $LIBS
+cc $CFLAGS -o triangle src/main.c src/filesystem.c $LIBS
