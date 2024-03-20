@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #include "filesystem.h"
+#include "algebra.h"
 
 const char *vertex_shader_path = "shaders/basic.vert";
 const char *fragment_shader_path = "shaders/basic.frag";
@@ -15,19 +16,6 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     (void) window;
     glViewport(0, 0, width, height);
-}
-
-typedef struct { float x, y, z; } V3f;
-typedef struct { float x, y, z, w; } V4f;
-
-V3f v3f(float x, float y, float z)
-{
-    return (V3f){x, y, z};
-}
-
-V4f v4f(float x, float y, float z, float w)
-{
-    return (V4f){x, y, z, w};
 }
 
 typedef struct {
