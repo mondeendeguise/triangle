@@ -112,7 +112,7 @@ bool compile_shader_file(const char *file_path, GLenum shader_type, GLuint *shad
     return ok;
 }
 
-bool link_shader_program(const char *vertex_shader_path,
+bool load_shader_program(const char *vertex_shader_path,
                          const char *fragment_shader_path,
                          GLuint *program)
 {
@@ -135,7 +135,7 @@ bool link_shader_program(const char *vertex_shader_path,
 
         glGetProgramInfoLog(*program, message_size, &message_size, message);
 
-        fprintf(stderr, "ERROR: failed to link shader program: %.*s\n", message_size, message);
+        fprintf(stderr, "ERROR: failed to load shader program: %.*s\n", message_size, message);
     }
     ok = ok && linked;
 
@@ -143,6 +143,45 @@ bool link_shader_program(const char *vertex_shader_path,
     glDeleteShader(fragment_shader);
 
     return ok;
+}
+
+typedef enum {
+    PROGRAM_BASIC = 0,
+    PROGRAM_COUNT,
+} Shader_Program;
+
+typedef struct {
+    GLuint vao;
+    GLuint vbo;
+    GLuint programs[PROGRAM_COUNT];
+    Vertex *vertices;
+    size_t vertex_count;
+} Renderer;
+
+static Renderer global_renderer = {0};
+
+void r_init(Renderer *r)
+{
+    r->vertices = malloc(r->vertex_count * sizeof(Vertex));
+
+    glGenBuffers(1, &r->vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, r->vbo);
+    glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), r->vertices, GL_DYNAMIC_DRAW);
+
+    glGenVertexArrays(1, &r->vao);
+    glBindVertexArray(r->vao);
+
+    glVertexAttribPointer(VA_POS, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, pos));
+    glEnableVertexAttribArray(VA_POS);
+
+    glVertexAttribPointer(VA_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, color));
+    glEnableVertexAttribArray(VA_COLOR);
+}
+
+void r_reload_shaders(Renderer *r)
+{
+    load_shader_program(vertex_shader_path, fragment_shader_path, &r->programs[0]);
+    glUseProgram(r->programs[0]);
 }
 
 int main(void)
@@ -161,8 +200,9 @@ int main(void)
     glewInit();
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    GLuint shader_program;
-    link_shader_program(vertex_shader_path, fragment_shader_path, &shader_program);
+    Renderer *r = &global_renderer;
+    r_init(r);
+    r_reload_shaders(r);
 
     size_t vertex_count = 3;
     Vertex *vertices = malloc(vertex_count * sizeof(Vertex));
@@ -170,23 +210,6 @@ int main(void)
     vertices[0] = (Vertex) { v3f( 0.5f,  0.5f,  0.0f), v4f(1.0, 0.0, 0.0, 1.0) };
     vertices[1] = (Vertex) { v3f( 0.5f, -0.5f,  0.0f), v4f(0.0, 1.0, 0.0, 1.0) };
     vertices[2] = (Vertex) { v3f(-0.5f,  0.5f,  0.0f), v4f(0.0, 0.0, 1.0, 1.0) };
-
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
-
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    glVertexAttribPointer(VA_POS, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, pos));
-    glEnableVertexAttribArray(VA_POS);
-
-    glVertexAttribPointer(VA_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, color));
-    glEnableVertexAttribArray(VA_COLOR);
-
-    glUseProgram(shader_program);
 
     glBufferData(GL_ARRAY_BUFFER, vertex_count * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
 
