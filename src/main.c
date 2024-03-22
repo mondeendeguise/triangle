@@ -105,24 +105,36 @@ typedef enum {
 } Shader_Program;
 
 #define VERTEX_CAP (8 * 1024)
+#define INDEX_CAP (16 * 1024)
 typedef struct {
     GLuint vao;
     GLuint vbo;
+    GLuint ebo;
+
     GLuint programs[PROGRAM_COUNT];
+
     Vertex vertices[VERTEX_CAP];
     size_t vertex_count;
+
+    GLuint indices[INDEX_CAP];
+    size_t index_count;
+
 } Renderer;
 
 static Renderer global_renderer = {0};
 
 void r_init(Renderer *r)
 {
+    glGenVertexArrays(1, &r->vao);
+    glBindVertexArray(r->vao);
+
     glGenBuffers(1, &r->vbo);
     glBindBuffer(GL_ARRAY_BUFFER, r->vbo);
     glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), r->vertices, GL_DYNAMIC_DRAW);
 
-    glGenVertexArrays(1, &r->vao);
-    glBindVertexArray(r->vao);
+    glGenBuffers(1, &r->ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, r->ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, r->index_count * sizeof(GLuint), r->indices, GL_DYNAMIC_DRAW);
 
     glVertexAttribPointer(VA_POS, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, pos));
     glEnableVertexAttribArray(VA_POS);
@@ -132,6 +144,14 @@ void r_init(Renderer *r)
 
     glVertexAttribPointer(VA_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, color));
     glEnableVertexAttribArray(VA_COLOR);
+}
+
+void r_deallocate(Renderer *r)
+{
+    glDeleteVertexArrays(1, &r->vao);
+    glDeleteBuffers(1, &r->vbo);
+    glDeleteBuffers(1, &r->ebo);
+    glDeleteProgram(r->programs[0]);
 }
 
 void r_reload_shaders(Renderer *r)
@@ -144,6 +164,32 @@ void r_vertex(Renderer *r, Vertex v)
 {
     assert(r->vertex_count < VERTEX_CAP);
     r->vertices[r->vertex_count++] = v;
+}
+
+void r_quad_pp(Renderer *r, V2f p1, V2f p2, V4f color)
+{
+    V2f a = p1;
+    V2f b = v2f(p2.x, p1.y);
+    V2f c = v2f(p1.x, p2.y);
+    V2f d = p2;
+
+    GLuint index_start = (GLuint) r->vertex_count;
+
+    r_vertex(r, (Vertex){a, v2f(0.0f, 0.0f), color});
+    r_vertex(r, (Vertex){b, v2f(1.0f, 0.0f), color});
+    r_vertex(r, (Vertex){c, v2f(0.0f, 1.0f), color});
+    r_vertex(r, (Vertex){d, v2f(1.0f, 1.0f), color});
+
+    r->indices[r->index_count++] = index_start + 0;
+    r->indices[r->index_count++] = index_start + 1;
+    r->indices[r->index_count++] = index_start + 2;
+
+    r->indices[r->index_count++] = index_start + 1;
+    r->indices[r->index_count++] = index_start + 2;
+    r->indices[r->index_count++] = index_start + 3;
+
+    glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), r->vertices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, r->index_count * sizeof(GLuint), r->indices, GL_DYNAMIC_DRAW);
 }
 
 int main(void)
@@ -166,34 +212,34 @@ int main(void)
     r_init(r);
     r_reload_shaders(r);
 
-    /* size_t vertex_count = 3; */
-    /* Vertex *vertices = malloc(vertex_count * sizeof(Vertex)); */
+    r_quad_pp(r, v2f(-0.5f, -0.5f), v2f(0.5f, 0.5f), v4f(1.0f, 0.0f, 1.0f, 1.0f));
+    /* r_quad_pp(r, v2f( 0.0f, -0.5f), v2f( 0.5f,  0.5f), v4f(0.0f, 1.0f, 0.0f, 1.0f)); */
+    /* r_quad_pp(r, v2f( 0.0f,  0.5f), v2f(-0.5f, -0.5f), v4f(0.0f, 1.0f, 0.0f, 1.0f)); */
     
-    r_vertex(r, (Vertex) { v2f( 0.5f,  0.5f), v2f( 1.0,  1.0), v4f(1.0, 0.0, 0.0, 1.0) });
-    r_vertex(r, (Vertex) { v2f( 0.5f, -0.5f), v2f( 1.0, -1.0), v4f(0.0, 1.0, 0.0, 1.0) });
-    r_vertex(r, (Vertex) { v2f(-0.5f,  0.5f), v2f(-1.0,  1.0), v4f(0.0, 0.0, 1.0, 1.0) });
+    /* r_vertex(r, (Vertex) { v2f( 0.5f,  0.5f), v2f( 1.0,  1.0), v4f(1.0, 0.0, 0.0, 1.0) }); */
+    /* r_vertex(r, (Vertex) { v2f( 0.5f, -0.5f), v2f( 1.0, -1.0), v4f(0.0, 1.0, 0.0, 1.0) }); */
+    /* r_vertex(r, (Vertex) { v2f(-0.5f,  0.5f), v2f(-1.0,  1.0), v4f(0.0, 0.0, 1.0, 1.0) }); */
 
-    glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
+    /* glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW); */
 
-    /* vertex_count = 6; */
-    /* vertices = realloc(r->vertices, r->vertex_count * sizeof(Vertex)); */
+    /* r_vertex(r, (Vertex) { v2f(-0.5f, -0.5f), v2f(-1.0, -1.0), v4f(1.0f, 0.0f, 0.0f, 1.0f) }); */
+    /* r_vertex(r, (Vertex) { v2f( 0.5f, -0.5f), v2f( 1.0, -1.0), v4f(0.0f, 1.0f, 0.0f, 1.0f) }); */
+    /* r_vertex(r, (Vertex) { v2f(-0.5f,  0.5f), v2f(-1.0,  1.0), v4f(0.0f, 0.0f, 1.0f, 1.0f) }); */
 
-    r_vertex(r, (Vertex) { v2f(-0.5f, -0.5f), v2f(-1.0, -1.0), v4f(1.0f, 0.0f, 0.0f, 1.0f) });
-    r_vertex(r, (Vertex) { v2f( 0.5f, -0.5f), v2f( 1.0, -1.0), v4f(0.0f, 1.0f, 0.0f, 1.0f) });
-    r_vertex(r, (Vertex) { v2f(-0.5f,  0.5f), v2f(-1.0,  1.0), v4f(0.0f, 0.0f, 1.0f, 1.0f) });
-
-    glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), r->vertices, GL_DYNAMIC_DRAW);
+    /* glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), r->vertices, GL_DYNAMIC_DRAW); */
 
     while(!glfwWindowShouldClose(window)) {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawArrays(GL_TRIANGLES, 0, r->vertex_count);
+        /* glDrawArrays(GL_TRIANGLES, 0, r->vertex_count); */
+        glDrawElements(GL_TRIANGLES, r->index_count, GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    r_deallocate(r);
     glfwTerminate();
     return 0;
 }
