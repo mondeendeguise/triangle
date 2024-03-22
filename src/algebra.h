@@ -1,6 +1,8 @@
 #ifndef ALGEBRA_H_
 #define ALGEBRA_H_
 
+#define TAU 6.2831853
+
 typedef struct { float x, y; }       V2f;
 typedef struct { float x, y, z; }    V3f;
 typedef struct { float x, y, z, w; } V4f;

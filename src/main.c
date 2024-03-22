@@ -21,12 +21,14 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 }
 
 typedef struct {
-    V3f pos;
+    V2f pos;
+    V2f uv;
     V4f color;
 } Vertex;
 
 typedef enum {
     VA_POS = 0,
+    VA_UV,
     VA_COLOR,
     VA_COUNT,
 } Vertex_Attrib;
@@ -122,8 +124,11 @@ void r_init(Renderer *r)
     glGenVertexArrays(1, &r->vao);
     glBindVertexArray(r->vao);
 
-    glVertexAttribPointer(VA_POS, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, pos));
+    glVertexAttribPointer(VA_POS, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, pos));
     glEnableVertexAttribArray(VA_POS);
+
+    glVertexAttribPointer(VA_UV, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, uv));
+    glEnableVertexAttribArray(VA_UV);
 
     glVertexAttribPointer(VA_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *) offsetof(Vertex, color));
     glEnableVertexAttribArray(VA_COLOR);
@@ -164,18 +169,18 @@ int main(void)
     /* size_t vertex_count = 3; */
     /* Vertex *vertices = malloc(vertex_count * sizeof(Vertex)); */
     
-    r_vertex(r, (Vertex) { v3f( 0.5f,  0.5f,  0.0f), v4f(1.0, 0.0, 0.0, 1.0) });
-    r_vertex(r, (Vertex) { v3f( 0.5f, -0.5f,  0.0f), v4f(0.0, 1.0, 0.0, 1.0) });
-    r_vertex(r, (Vertex) { v3f(-0.5f,  0.5f,  0.0f), v4f(0.0, 0.0, 1.0, 1.0) });
+    r_vertex(r, (Vertex) { v2f( 0.5f,  0.5f), v2f( 1.0,  1.0), v4f(1.0, 0.0, 0.0, 1.0) });
+    r_vertex(r, (Vertex) { v2f( 0.5f, -0.5f), v2f( 1.0, -1.0), v4f(0.0, 1.0, 0.0, 1.0) });
+    r_vertex(r, (Vertex) { v2f(-0.5f,  0.5f), v2f(-1.0,  1.0), v4f(0.0, 0.0, 1.0, 1.0) });
 
     glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
 
     /* vertex_count = 6; */
     /* vertices = realloc(r->vertices, r->vertex_count * sizeof(Vertex)); */
 
-    r_vertex(r, (Vertex) { v3f(-0.5f, -0.5f,  0.0f), v4f(1.0f, 0.0f, 0.0f, 1.0f) });
-    r_vertex(r, (Vertex) { v3f( 0.5f, -0.5f,  0.0f), v4f(0.0f, 1.0f, 0.0f, 1.0f) });
-    r_vertex(r, (Vertex) { v3f(-0.5f,  0.5f,  0.0f), v4f(0.0f, 0.0f, 1.0f, 1.0f) });
+    r_vertex(r, (Vertex) { v2f(-0.5f, -0.5f), v2f(-1.0, -1.0), v4f(1.0f, 0.0f, 0.0f, 1.0f) });
+    r_vertex(r, (Vertex) { v2f( 0.5f, -0.5f), v2f( 1.0, -1.0), v4f(0.0f, 1.0f, 0.0f, 1.0f) });
+    r_vertex(r, (Vertex) { v2f(-0.5f,  0.5f), v2f(-1.0,  1.0), v4f(0.0f, 0.0f, 1.0f, 1.0f) });
 
     glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), r->vertices, GL_DYNAMIC_DRAW);
 
