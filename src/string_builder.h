@@ -20,7 +20,7 @@ typedef struct {
     do {                         \
         const char *s = (cstr);  \
         size_t n = strlen(s);    \
-        da_append_man(sb, s, n); \
+        sb_append_buf(sb, s, n); \
     } while(0)
 
 #endif // STRING_BUILDER_H_
