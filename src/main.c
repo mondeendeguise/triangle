@@ -11,8 +11,9 @@
 #include "filesystem.h"
 #include "algebra.h"
 
-const char *vertex_shader_path = "shaders/basic.vert";
-const char *fragment_shader_path = "shaders/basic.frag";
+const char *screen_shader_path = "shaders/screen.vert";
+const char *basic_fragment_shader_path = "shaders/basic.frag";
+const char *wireframe_shader_path = "shaders/wireframe.frag";
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
@@ -101,6 +102,7 @@ bool load_shader_program(const char *vertex_shader_path,
 
 typedef enum {
     PROGRAM_BASIC = 0,
+    PROGRAM_WIREFRAME,
     PROGRAM_COUNT,
 } Shader_Program;
 
@@ -151,13 +153,37 @@ void r_deallocate(Renderer *r)
     glDeleteVertexArrays(1, &r->vao);
     glDeleteBuffers(1, &r->vbo);
     glDeleteBuffers(1, &r->ebo);
-    glDeleteProgram(r->programs[0]);
+
+    for(size_t i = 0; i < PROGRAM_COUNT; ++i) {
+        glDeleteProgram(r->programs[i]);
+    }
 }
 
 void r_reload_shaders(Renderer *r)
 {
-    load_shader_program(vertex_shader_path, fragment_shader_path, &r->programs[0]);
-    glUseProgram(r->programs[0]);
+    load_shader_program(screen_shader_path, basic_fragment_shader_path, &r->programs[PROGRAM_BASIC]);
+    load_shader_program(screen_shader_path, wireframe_shader_path, &r->programs[PROGRAM_WIREFRAME]);
+    glUseProgram(r->programs[PROGRAM_BASIC]);
+}
+
+void toggle_wireframe(Renderer *r)
+{
+    GLint *polygon_mode = malloc(sizeof(GLint));  // avoid stack smashing error
+    glGetIntegerv(GL_POLYGON_MODE, polygon_mode);
+    switch(*polygon_mode) {
+        case GL_FILL: {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glUseProgram(r->programs[PROGRAM_WIREFRAME]);
+        } break;
+
+        case GL_LINE:
+        default: {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glUseProgram(r->programs[PROGRAM_BASIC]);
+        } break;
+
+    }
+    free(polygon_mode);
 }
 
 void r_vertex(Renderer *r, Vertex v)
@@ -192,6 +218,13 @@ void r_quad_pp(Renderer *r, V2f p1, V2f p2, V4f color)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, r->index_count * sizeof(GLuint), r->indices, GL_DYNAMIC_DRAW);
 }
 
+void r_quad_cr(Renderer *r, V2f center, V2f radius, V4f color)
+{
+    V2f p1 = v2f_sub(center, radius);
+    V2f p2 = v2f_sum(center, radius);
+    r_quad_pp(r, p1, p2, color);
+}
+
 int main(void)
 {
     glfwInit();
@@ -213,6 +246,7 @@ int main(void)
     r_reload_shaders(r);
 
     r_quad_pp(r, v2f(-0.5f, -0.5f), v2f(0.5f, 0.5f), v4f(1.0f, 0.0f, 1.0f, 1.0f));
+    r_quad_cr(r, v2f(0.0f, 0.0f), v2ff(0.1f), v4f(1.0f, 0.0f, 0.0f, 1.0f));
     /* r_quad_pp(r, v2f( 0.0f, -0.5f), v2f( 0.5f,  0.5f), v4f(0.0f, 1.0f, 0.0f, 1.0f)); */
     /* r_quad_pp(r, v2f( 0.0f,  0.5f), v2f(-0.5f, -0.5f), v4f(0.0f, 1.0f, 0.0f, 1.0f)); */
     
@@ -227,6 +261,8 @@ int main(void)
     /* r_vertex(r, (Vertex) { v2f(-0.5f,  0.5f), v2f(-1.0,  1.0), v4f(0.0f, 0.0f, 1.0f, 1.0f) }); */
 
     /* glBufferData(GL_ARRAY_BUFFER, r->vertex_count * sizeof(Vertex), r->vertices, GL_DYNAMIC_DRAW); */
+
+    toggle_wireframe(r);
 
     while(!glfwWindowShouldClose(window)) {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
