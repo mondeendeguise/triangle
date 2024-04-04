@@ -2,7 +2,7 @@ CC := clang
 LINK := clang
 
 CFLAGS := -Wall -Wextra -pedantic -ggdb -Wno-gnu-zero-variadic-macro-arguments
-LIBS := `pkg-config --libs glew glfw3`
+LIBS := `pkg-config --libs glew glfw3` -lm
 
 SRC_DIR := ./src
 OBJ_DIR := ./build
